@@ -8,10 +8,18 @@ from matplotlib.figure import Figure
 class PowerDistancePlot(FigureCanvas):
     def __init__(self, parent=None) -> None:
         self.figure = Figure(facecolor="#1b1f2a")
-        self.ax = self.figure.add_subplot(111)
+        self.ax = self.figure.add_subplot(121)
+        self.info_ax = self.figure.add_subplot(122)
         super().__init__(self.figure)
         self.setParent(parent)
+        self._init_layout()
         self._style_axes()
+
+    def _init_layout(self) -> None:
+        self.figure.clear()
+        gs = self.figure.add_gridspec(1, 2, width_ratios=[3.2, 1.35], wspace=0.15)
+        self.ax = self.figure.add_subplot(gs[0, 0])
+        self.info_ax = self.figure.add_subplot(gs[0, 1])
 
     def _style_axes(self) -> None:
         self.ax.set_facecolor("#151925")
@@ -22,6 +30,14 @@ class PowerDistancePlot(FigureCanvas):
         self.ax.set_xlabel("Distance (km)", color="#e8eeff")
         self.ax.set_ylabel("Received Power (dBm)", color="#e8eeff")
         self.ax.set_title("Power vs Distance", color="#e8eeff", pad=12)
+
+    def _style_info_axes(self) -> None:
+        self.info_ax.set_facecolor("#151925")
+        for spine in self.info_ax.spines.values():
+            spine.set_color("#4a5470")
+        self.info_ax.set_xticks([])
+        self.info_ax.set_yticks([])
+        self.info_ax.set_title("Simulation Table", color="#e8eeff", fontsize=11, pad=10)
 
     def update_curve(
         self,
@@ -34,9 +50,12 @@ class PowerDistancePlot(FigureCanvas):
         splice_loss_db: float,
         connector_loss_db: float,
         nb_connectors: int,
+        is_functional: bool,
+        summary_rows: list[tuple[str, str]],
     ) -> None:
-        self.ax.clear()
+        self._init_layout()
         self._style_axes()
+        self._style_info_axes()
 
         upper = max(max_distance_km * 1.2, 1.0)
         x_values = np.linspace(0, upper, 400)
@@ -69,6 +88,39 @@ class PowerDistancePlot(FigureCanvas):
                 if x > upper:
                     break
                 self.ax.axvline(x=x, color="#7887ab", linestyle=":", alpha=0.35)
+
+        status_text = "Functional" if is_functional else "Not Functional"
+        status_color = "#1f9d55" if is_functional else "#c24141"
+        self.info_ax.text(
+            0.5,
+            0.97,
+            f"Status: {status_text}",
+            fontsize=10,
+            fontweight="bold",
+            color="#ffffff",
+            va="top",
+            ha="center",
+            bbox={"boxstyle": "round,pad=0.35", "facecolor": status_color, "edgecolor": status_color, "alpha": 0.95},
+        )
+
+        table_data = [[k, v] for k, v in summary_rows]
+        table = self.info_ax.table(
+            cellText=table_data,
+            colLabels=["Parameter", "Value"],
+            cellLoc="left",
+            colLoc="left",
+            bbox=[0.02, 0.02, 0.96, 0.88],
+        )
+        table.auto_set_font_size(False)
+        table.set_fontsize(8.4)
+        for (row, col), cell in table.get_celld().items():
+            if row == 0:
+                cell.set_text_props(color="#e8eeff", weight="bold")
+                cell.set_facecolor("#25304a")
+            else:
+                cell.set_text_props(color="#dfe8ff")
+                cell.set_facecolor("#0f1522" if row % 2 == 0 else "#121a2b")
+            cell.set_edgecolor("#4a5470")
 
         self.ax.legend(loc="best", facecolor="#151925", edgecolor="#4a5470", labelcolor="#d7deed")
         self.figure.tight_layout()

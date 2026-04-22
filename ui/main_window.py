@@ -259,6 +259,22 @@ class MainWindow(QWidget):
             self.status_indicator.style().unpolish(self.status_indicator)
             self.status_indicator.style().polish(self.status_indicator)
 
+            summary_rows = [
+                ("Pe", f"{data.emitted_power_dbm:.2f} dBm"),
+                ("S", f"{data.receiver_sensitivity_dbm:.2f} dBm"),
+                ("alpha", f"{data.attenuation_db_per_km:.3f} dB/km"),
+                ("L", f"{data.length_km:.2f} km"),
+                ("Lb", f"{data.spool_length_km:.2f} km"),
+                ("N splices", f"{results.number_of_splices}"),
+                ("Splice loss", f"{data.splice_loss_db:.2f} dB"),
+                ("Connector loss", f"{data.connector_loss_db:.2f} dB"),
+                ("Dc", f"{data.chromatic_dispersion_ps_nm_km:.2f} ps/nm/km"),
+                ("Delta lambda", f"{data.spectral_width_nm:.3f} nm"),
+                ("Pr", f"{results.received_power_dbm:.2f} dBm"),
+                ("Margin", f"{results.computed_margin_db:.2f} dB"),
+                ("B max", f"{results.maximum_bit_rate_gbps:.2f} Gbps"),
+                ("B req", f"{data.required_bitrate_gbps:.2f} Gbps"),
+            ]
             self.plot.update_curve(
                 emitted_power_dbm=data.emitted_power_dbm,
                 attenuation_db_per_km=data.attenuation_db_per_km,
@@ -269,6 +285,8 @@ class MainWindow(QWidget):
                 splice_loss_db=data.splice_loss_db,
                 connector_loss_db=data.connector_loss_db,
                 nb_connectors=data.nb_connectors,
+                is_functional=results.is_link_functional,
+                summary_rows=summary_rows,
             )
             self.save_json_btn.setEnabled(True)
             self.save_graph_btn.setEnabled(True)
