@@ -10,8 +10,17 @@ class PowerDistancePlot(FigureCanvas):
         self.figure = Figure(facecolor="#1b1f2a")
         self.ax = self.figure.add_subplot(121)
         self.info_ax = self.figure.add_subplot(122)
+        self.theme_name = "dark"
+        self.theme_palette = {}
+        self.line_colors = {
+            "curve": "#58a6ff",
+            "sensitivity": "#ff9f43",
+            "target": "#ff6b6b",
+            "splice_marker": "#7887ab",
+        }
         super().__init__(self.figure)
         self.setParent(parent)
+        self.set_theme("dark")
         self._init_layout()
         self._style_axes()
 
@@ -22,22 +31,59 @@ class PowerDistancePlot(FigureCanvas):
         self.info_ax = self.figure.add_subplot(gs[0, 1])
 
     def _style_axes(self) -> None:
-        self.ax.set_facecolor("#151925")
-        self.ax.grid(True, color="#2a3142", linestyle="--", linewidth=0.8, alpha=0.8)
-        self.ax.tick_params(colors="#d7deed")
+        self.ax.set_facecolor(self.theme_palette["axes_bg"])
+        self.ax.grid(True, color=self.theme_palette["grid"], linestyle="--", linewidth=0.8, alpha=0.8)
+        self.ax.tick_params(colors=self.theme_palette["tick"])
         for spine in self.ax.spines.values():
-            spine.set_color("#4a5470")
-        self.ax.set_xlabel("Distance (km)", color="#e8eeff")
-        self.ax.set_ylabel("Received Power (dBm)", color="#e8eeff")
-        self.ax.set_title("Power vs Distance", color="#e8eeff", pad=12)
+            spine.set_color(self.theme_palette["spine"])
+        self.ax.set_xlabel("Distance (km)", color=self.theme_palette["text"])
+        self.ax.set_ylabel("Received Power (dBm)", color=self.theme_palette["text"])
+        self.ax.set_title("Power vs Distance", color=self.theme_palette["text"], pad=12)
 
     def _style_info_axes(self) -> None:
-        self.info_ax.set_facecolor("#151925")
+        self.info_ax.set_facecolor(self.theme_palette["axes_bg"])
         for spine in self.info_ax.spines.values():
-            spine.set_color("#4a5470")
+            spine.set_color(self.theme_palette["spine"])
         self.info_ax.set_xticks([])
         self.info_ax.set_yticks([])
-        self.info_ax.set_title("Simulation Table", color="#e8eeff", fontsize=11, pad=10)
+        self.info_ax.set_title("Simulation Table", color=self.theme_palette["text"], fontsize=11, pad=10)
+
+    def set_theme(self, theme_name: str) -> None:
+        if theme_name == "light":
+            self.theme_name = "light"
+            self.theme_palette = {
+                "figure_bg": "#f6f8fc",
+                "axes_bg": "#ffffff",
+                "grid": "#d8dfec",
+                "tick": "#33415d",
+                "spine": "#8a98b5",
+                "text": "#1f2a44",
+                "table_header": "#dce6ff",
+                "table_even": "#f5f8ff",
+                "table_odd": "#edf3ff",
+                "table_text": "#1f2a44",
+                "legend_bg": "#ffffff",
+            }
+        else:
+            self.theme_name = "dark"
+            self.theme_palette = {
+                "figure_bg": "#1b1f2a",
+                "axes_bg": "#151925",
+                "grid": "#2a3142",
+                "tick": "#d7deed",
+                "spine": "#4a5470",
+                "text": "#e8eeff",
+                "table_header": "#25304a",
+                "table_even": "#0f1522",
+                "table_odd": "#121a2b",
+                "table_text": "#dfe8ff",
+                "legend_bg": "#151925",
+            }
+        self.figure.set_facecolor(self.theme_palette["figure_bg"])
+
+    def set_line_color(self, line_key: str, color_hex: str) -> None:
+        if line_key in self.line_colors and color_hex:
+            self.line_colors[line_key] = color_hex
 
     def update_curve(
         self,
@@ -66,17 +112,17 @@ class PowerDistancePlot(FigureCanvas):
             y = emitted_power_dbm - attenuation_db_per_km * x - splice_count * splice_loss_db - connector_total_db
             y_values.append(y)
 
-        self.ax.plot(x_values, y_values, color="#58a6ff", linewidth=2.2)
+        self.ax.plot(x_values, y_values, color=self.line_colors["curve"], linewidth=2.2)
         self.ax.axhline(
             receiver_sensitivity_dbm,
-            color="#ff9f43",
+            color=self.line_colors["sensitivity"],
             linestyle=":",
             linewidth=1.6,
             label=f"Sensibilite ({receiver_sensitivity_dbm:.1f} dBm)",
         )
         self.ax.axvline(
             target_length_km,
-            color="#ff6b6b",
+            color=self.line_colors["target"],
             linestyle="--",
             linewidth=1.6,
             label=f"L demandee ({target_length_km:.1f} km)",
@@ -87,7 +133,7 @@ class PowerDistancePlot(FigureCanvas):
                 x = i * spool_length_km
                 if x > upper:
                     break
-                self.ax.axvline(x=x, color="#7887ab", linestyle=":", alpha=0.35)
+                self.ax.axvline(x=x, color=self.line_colors["splice_marker"], linestyle=":", alpha=0.35)
 
         status_text = "Functional" if is_functional else "Not Functional"
         status_color = "#1f9d55" if is_functional else "#c24141"
@@ -115,14 +161,19 @@ class PowerDistancePlot(FigureCanvas):
         table.set_fontsize(8.4)
         for (row, col), cell in table.get_celld().items():
             if row == 0:
-                cell.set_text_props(color="#e8eeff", weight="bold")
-                cell.set_facecolor("#25304a")
+                cell.set_text_props(color=self.theme_palette["text"], weight="bold")
+                cell.set_facecolor(self.theme_palette["table_header"])
             else:
-                cell.set_text_props(color="#dfe8ff")
-                cell.set_facecolor("#0f1522" if row % 2 == 0 else "#121a2b")
-            cell.set_edgecolor("#4a5470")
+                cell.set_text_props(color=self.theme_palette["table_text"])
+                cell.set_facecolor(self.theme_palette["table_even"] if row % 2 == 0 else self.theme_palette["table_odd"])
+            cell.set_edgecolor(self.theme_palette["spine"])
 
-        self.ax.legend(loc="best", facecolor="#151925", edgecolor="#4a5470", labelcolor="#d7deed")
+        self.ax.legend(
+            loc="best",
+            facecolor=self.theme_palette["legend_bg"],
+            edgecolor=self.theme_palette["spine"],
+            labelcolor=self.theme_palette["tick"],
+        )
         self.figure.tight_layout()
         self.draw_idle()
 

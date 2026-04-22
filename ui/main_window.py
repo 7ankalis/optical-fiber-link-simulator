@@ -8,6 +8,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QComboBox,
+    QColorDialog,
     QDoubleSpinBox,
     QFileDialog,
     QFrame,
@@ -32,10 +33,11 @@ class MainWindow(QWidget):
         super().__init__()
         self.setWindowTitle("Optical Fiber Link Simulator")
         self.resize(1280, 780)
+        self.theme_name = "dark"
         self.last_inputs: SimulationInputs | None = None
         self.last_results = None
         self._build_ui()
-        self._apply_styles()
+        self._apply_styles(self.theme_name)
         self._update_fiber_defaults()
 
     def _build_ui(self) -> None:
@@ -61,6 +63,12 @@ class MainWindow(QWidget):
         self.import_json_btn = QPushButton("Import JSON")
         self.import_json_btn.setCursor(Qt.PointingHandCursor)
         self.import_json_btn.clicked.connect(self._import_json)
+        self.theme_btn = QPushButton("Toggle Theme")
+        self.theme_btn.setCursor(Qt.PointingHandCursor)
+        self.theme_btn.clicked.connect(self._toggle_theme)
+        self.colors_btn = QPushButton("Line Colors")
+        self.colors_btn.setCursor(Qt.PointingHandCursor)
+        self.colors_btn.clicked.connect(self._customize_line_colors)
         self.save_json_btn = QPushButton("Save JSON")
         self.save_json_btn.setCursor(Qt.PointingHandCursor)
         self.save_json_btn.clicked.connect(self._save_json)
@@ -73,6 +81,8 @@ class MainWindow(QWidget):
         buttons_row.setSpacing(10)
         buttons_row.addWidget(self.simulate_btn)
         buttons_row.addWidget(self.import_json_btn)
+        buttons_row.addWidget(self.theme_btn)
+        buttons_row.addWidget(self.colors_btn)
         buttons_row.addWidget(self.save_json_btn)
         buttons_row.addWidget(self.save_graph_btn)
         left_panel.addWidget(self.tx_box)
@@ -370,6 +380,25 @@ class MainWindow(QWidget):
         except Exception as exc:  # pragma: no cover - user-facing safeguard
             QMessageBox.critical(self, "Import Error", f"Could not apply settings:\n{exc}")
 
+    def _toggle_theme(self) -> None:
+        self.theme_name = "light" if self.theme_name == "dark" else "dark"
+        self._apply_styles(self.theme_name)
+        self.plot.set_theme(self.theme_name)
+        if self.last_results is not None:
+            self._simulate()
+
+    def _pick_line_color(self, title: str, key: str) -> None:
+        color = QColorDialog.getColor(parent=self, title=title)
+        if color.isValid():
+            self.plot.set_line_color(key, color.name())
+
+    def _customize_line_colors(self) -> None:
+        self._pick_line_color("Choose main curve color", "curve")
+        self._pick_line_color("Choose sensitivity line color", "sensitivity")
+        self._pick_line_color("Choose target-length line color", "target")
+        if self.last_results is not None:
+            self._simulate()
+
     def _apply_imported_settings(self, settings: dict) -> None:
         def set_if_present(spinbox: QDoubleSpinBox, key: str) -> None:
             if key in settings:
@@ -399,11 +428,77 @@ class MainWindow(QWidget):
         set_if_present(self.safety_margin, "safety_margin_db")
         set_if_present(self.required_bitrate, "required_bitrate_gbps")
 
-    def _apply_styles(self) -> None:
+    def _apply_styles(self, theme_name: str) -> None:
         font = QFont("Segoe UI", 10)
         self.setFont(font)
-        self.setStyleSheet(
+        if theme_name == "light":
+            stylesheet = """
+            QWidget {
+                background-color: #f2f5fb;
+                color: #1f2a44;
+            }
+            QScrollArea {
+                background: transparent;
+            }
+            QGroupBox {
+                border: 1px solid #c7d2e8;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding: 12px;
+                font-weight: 600;
+                background-color: #ffffff;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 6px;
+                color: #2a395d;
+            }
+            QDoubleSpinBox, QComboBox {
+                border: 1px solid #b9c8e6;
+                border-radius: 8px;
+                padding: 6px 8px;
+                background-color: #ffffff;
+            }
+            QDoubleSpinBox:focus, QComboBox:focus {
+                border: 1px solid #2f81f7;
+            }
+            QPushButton {
+                min-height: 42px;
+                border: none;
+                border-radius: 10px;
+                font-weight: 600;
+                background-color: #2f81f7;
+                color: #ffffff;
+            }
+            QPushButton:hover {
+                background-color: #3c8cff;
+            }
+            QPushButton:pressed {
+                background-color: #2368c4;
+            }
+            QLabel#graphTitle {
+                font-size: 15px;
+                font-weight: 700;
+                color: #1f2a44;
+                padding-left: 6px;
+            }
+            QLabel#statusIndicator {
+                border-radius: 8px;
+                padding: 4px 10px;
+                background-color: #8a98b5;
+                color: #ffffff;
+                font-weight: 700;
+            }
+            QLabel#statusIndicator[status="ok"] {
+                background-color: #1f9d55;
+            }
+            QLabel#statusIndicator[status="bad"] {
+                background-color: #c24141;
+            }
             """
+        else:
+            stylesheet = """
             QWidget {
                 background-color: #10131a;
                 color: #e6edf7;
@@ -468,4 +563,4 @@ class MainWindow(QWidget):
                 background-color: #c24141;
             }
             """
-        )
+        self.setStyleSheet(stylesheet)
