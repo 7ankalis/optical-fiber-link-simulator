@@ -1,0 +1,312 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{lmodern}
+\usepackage{geometry}
+\geometry{margin=2.3cm}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{fancyhdr}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{caption}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  urlcolor=blue!60!black,
+  citecolor=blue!60!black
+}
+
+\lstdefinelanguage{json}{
+    basicstyle=\ttfamily\small,
+    numbers=left,
+    numberstyle=\scriptsize\color{gray},
+    stepnumber=1,
+    numbersep=8pt,
+    showstringspaces=false,
+    breaklines=true,
+    frame=single,
+    backgroundcolor=\color{black!2},
+    literate=
+     *{0}{{{\color{magenta}0}}}{1}
+      {1}{{{\color{magenta}1}}}{1}
+      {2}{{{\color{magenta}2}}}{1}
+      {3}{{{\color{magenta}3}}}{1}
+      {4}{{{\color{magenta}4}}}{1}
+      {5}{{{\color{magenta}5}}}{1}
+      {6}{{{\color{magenta}6}}}{1}
+      {7}{{{\color{magenta}7}}}{1}
+      {8}{{{\color{magenta}8}}}{1}
+      {9}{{{\color{magenta}9}}}{1}
+      {:}{{{\color{black}{:}}}}{1}
+      {,}{{{\color{black}{,}}}}{1}
+      {\{}{{{\color{blue!70!black}{\{}}}}{1}
+      {\}}{{{\color{blue!70!black}{\}}}}}{1}
+      {[}{{{\color{blue!70!black}{[}}}}{1}
+      {]}{{{\color{blue!70!black}{]}}}}{1}
+}
+
+\titleformat{\section}{\large\bfseries}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection.}{0.5em}{}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{Optical Fiber Link Simulator}
+\rhead{2ATEL2}
+\cfoot{\thepage}
+
+\title{
+  \vspace{-1.2cm}
+  \textbf{Design and Validation of a Desktop Optical Fiber Link Simulator}\\
+  \large A Practical Engineering Tool for TP (Travaux Pratiques)
+}
+\author{
+  \textbf{Taha Marouani} \and \textbf{Mohamed Amine Jaadari}\\
+  2ATEL2
+}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{fancy}
+
+\begin{abstract}
+This report presents the conception, implementation, and validation of a desktop application for optical fiber communication link simulation. The objective is to provide an educational yet engineering-grade environment where students can evaluate link feasibility through power budget and dispersion constraints. The simulator includes transmitter, fiber, and receiver parameterization; advanced loss mechanisms (attenuation, splices, connectors); line code effects (NRZ and RZ); and dynamic graphing of received power versus distance. Export capabilities in JSON and PNG provide reproducible proof artifacts. The resulting tool supports practical laboratory sessions by combining clarity, correctness, and professional software structure.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section*{List of Abbreviations}
+\addcontentsline{toc}{section}{List of Abbreviations}
+\begin{longtable}{p{0.18\textwidth}p{0.75\textwidth}}
+\toprule
+\textbf{Abbreviation} & \textbf{Meaning} \\
+\midrule
+SMF & Single-Mode Fiber (Monomode) \\
+FGI & Graded-Index Fiber (Fibre a Gradient d'Indice) \\
+TP & Travaux Pratiques \\
+GUI & Graphical User Interface \\
+JSON & JavaScript Object Notation (export format) \\
+PNG & Portable Network Graphics (image export format) \\
+NRZ & Non-Return-to-Zero line coding \\
+RZ & Return-to-Zero line coding \\
+$P_e$ & Emitted optical power (dBm) \\
+$P_r$ & Received optical power (dBm) \\
+$S$ & Receiver sensitivity (dBm) \\
+$\alpha$ & Fiber attenuation coefficient (dB/km) \\
+$L$ & Total link length (km) \\
+$L_b$ & Spool length (km) \\
+$D_c$ & Chromatic dispersion parameter (ps/nm/km) \\
+$\Delta \lambda$ & Optical source spectral width (nm) \\
+$\Delta \tau$ & Total pulse broadening / dispersion (ps) \\
+$B_{\max}$ & Maximum supported binary data rate (Gbps) \\
+\bottomrule
+\end{longtable}
+
+\newpage
+
+\section{Introduction and Context}
+Optical communication systems are core components of modern telecommunications networks because they provide high bandwidth, low attenuation, and electromagnetic immunity. In laboratory education, students must understand not only theoretical equations, but also practical engineering trade-offs: transmission reach, acceptable losses, required safety margin, and bit-rate limits due to dispersion.
+
+The software developed in this project addresses this pedagogical need. It provides a professional desktop environment inspired by industrial tools while remaining accessible for undergraduate/engineering TP sessions. The simulator helps users answer a concrete design question:
+\begin{quote}
+\textit{Given transmitter, fiber, and receiver characteristics, is the optical link feasible under both power-budget and dispersion constraints?}
+\end{quote}
+
+\section{Course-Based Theoretical Foundations}
+\subsection{Power Budget Model}
+The received power is computed from emitted power and cumulative losses:
+\begin{equation}
+P_r = P_e - \alpha L - N_s \cdot L_s - N_c \cdot L_c
+\end{equation}
+where:
+\begin{itemize}[leftmargin=1.2cm]
+  \item $\alpha L$ is fiber attenuation loss,
+  \item $N_s \cdot L_s$ is total splice loss,
+  \item $N_c \cdot L_c$ is total connector loss.
+\end{itemize}
+
+The number of splices is estimated from spool deployment:
+\begin{equation}
+N_s = \max\left(0,\left\lfloor\frac{L}{L_b}\right\rfloor - 1\right)
+\end{equation}
+
+Computed margin is:
+\begin{equation}
+M = P_r - S
+\end{equation}
+A link satisfies the power criterion if:
+\begin{equation}
+M \ge M_{\text{safety}}
+\end{equation}
+
+\subsection{Dispersion and Bit-Rate Constraint}
+Chromatic dispersion:
+\begin{equation}
+\Delta\tau_{ch} = |D_c| \cdot \Delta\lambda \cdot L
+\end{equation}
+
+Modal dispersion (for graded-index fiber profile):
+\begin{equation}
+\Delta\tau_{im} = \frac{n_c}{8c}\Delta^2 L_m \times 10^{12}
+\end{equation}
+where $L_m$ is in meters.
+
+Total dispersion:
+\begin{equation}
+\Delta\tau = \sqrt{(\Delta\tau_{ch})^2 + (\Delta\tau_{im})^2}
+\end{equation}
+
+Maximum binary rate:
+\begin{equation}
+B_{\max} = \frac{k_{\text{code}}}{\Delta\tau}
+\end{equation}
+with $k_{\text{code}}=0.7$ for NRZ and $0.35$ for RZ.
+
+The link satisfies the bandwidth criterion if:
+\begin{equation}
+B_{\max} \ge B_{\text{required}}
+\end{equation}
+
+\subsection{Global Feasibility Criterion}
+The simulator declares a link functional if and only if both conditions are true:
+\begin{enumerate}[leftmargin=1.2cm]
+  \item Margin condition (power budget): $M \ge M_{\text{safety}}$.
+  \item Bit-rate condition (dispersion limit): $B_{\max} \ge B_{\text{required}}$.
+\end{enumerate}
+
+\section{Software Design and Architecture}
+\subsection{Design Goals}
+The software was designed according to four principles:
+\begin{itemize}[leftmargin=1.2cm]
+  \item \textbf{Correctness:} equations consistent with the TP model.
+  \item \textbf{Clarity:} a student can understand and modify formulas.
+  \item \textbf{Professional UX:} dark modern interface with clear grouping.
+  \item \textbf{Reproducibility:} export of both numerical and visual proof.
+\end{itemize}
+
+\subsection{Project Structure and File Responsibilities}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{>{\ttfamily}p{0.34\textwidth}X}
+\toprule
+\textbf{Path} & \textbf{Role} \\
+\midrule
+main.py & Application entry point; initializes and runs the Qt event loop. \\
+core/calculations.py & Implements all physical equations, constraints, and verdict logic. \\
+ui/main\_window.py & Builds GUI sections, handles user inputs, triggers simulation, displays results, and manages exports. \\
+plot/power\_plot.py & Builds dynamic plot, draws threshold markers, and renders side proof table in exported figures. \\
+proof/*.json & Numerical evidence files exported from actual simulation sessions. \\
+proof/*.png & Graphical evidence files exported from simulation sessions. \\
+requirements.txt & Python dependencies for reproducible execution. \\
+\bottomrule
+\end{tabularx}
+\caption{Software organization and module responsibilities.}
+\end{table}
+
+\subsection{Execution Workflow}
+The simulator follows this pipeline:
+\begin{enumerate}[leftmargin=1.2cm]
+  \item User inputs transmitter/fiber/receiver values.
+  \item Engine computes losses, $P_r$, margin, dispersion, and $B_{\max}$.
+  \item Verdict is generated from dual feasibility criteria.
+  \item Power-vs-distance graph is plotted with sensitivity and target length.
+  \item Side table displays structured parameter/result evidence.
+  \item User exports JSON and/or PNG proof artifacts.
+\end{enumerate}
+
+\section{Graphical Interface and Usability}
+The GUI is intentionally structured for rapid laboratory use:
+\begin{itemize}[leftmargin=1.2cm]
+  \item \textbf{Transmitter section:} wavelength, spectral width, emitted power, line code, target bitrate.
+  \item \textbf{Fiber section:} profile, attenuation, chromatic dispersion, link/spool lengths, splice and connector losses.
+  \item \textbf{Receiver section:} sensitivity and required safety margin.
+  \item \textbf{Results section:} full numeric breakdown including losses and dispersions.
+  \item \textbf{Export controls:} JSON and PNG generation for archival/reporting.
+\end{itemize}
+
+\section{Proof Artifacts and Experimental Validation}
+\subsection{Available Proof Files}
+At report generation time, the following evidence file is available:
+\begin{itemize}[leftmargin=1.2cm]
+  \item \texttt{proof/simulation\_20260422\_121328.json}
+\end{itemize}
+
+\subsection{Numerical Proof (JSON)}
+\lstinputlisting[language=json,caption={Exported simulation proof JSON},label={lst:proofjson}]{proof/simulation_20260422_121328.json}
+
+\subsection{Graphical Proof (PNG)}
+\IfFileExists{proof/power_curve_20260422_121015.png}{
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=0.97\textwidth]{proof/power_curve_20260422_121015.png}
+    \caption{Exported power-distance graph with side evidence table.}
+  \end{figure}
+}{
+  \begin{figure}[H]
+    \centering
+    \fbox{\parbox{0.92\textwidth}{
+      \vspace{0.4cm}
+      No PNG proof file with a known name is currently present in \texttt{proof/}.\\
+      To include graphical evidence, export at least one graph from the application and place it in \texttt{proof/}.
+      \vspace{0.4cm}
+    }}
+    \caption{Graph proof placeholder.}
+  \end{figure}
+}
+
+\subsection{Interpretation of the Current Proof}
+From Listing~\ref{lst:proofjson}, the tested SMF case ($L=50$ km) provides:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Received power $P_r=-18.2$ dBm.
+  \item Computed margin $M=9.8$ dB with required margin of $3$ dB.
+  \item Maximum binary rate $B_{\max}\approx 8.24$ Gbps for NRZ.
+  \item Required binary rate $2.5$ Gbps.
+\end{itemize}
+Therefore, both constraints are satisfied and the link is correctly labeled functional.
+
+\section{Engineering Discussion}
+\subsection{Strengths of the Implemented Tool}
+\begin{itemize}[leftmargin=1.2cm]
+  \item Integrated treatment of attenuation and discrete losses.
+  \item Dual-constraint feasibility (power and bandwidth), matching practical design logic.
+  \item Exportable traceability for academic correction and team reporting.
+  \item Modular source code enabling formula refinement with minimal refactoring.
+\end{itemize}
+
+\subsection{Known Limits and Future Extensions}
+\begin{itemize}[leftmargin=1.2cm]
+  \item Some constants and assumptions may be further tuned against the official course PDF.
+  \item Multi-scenario batch comparison can be added for parametric studies.
+  \item Additional channel effects (PMD, nonlinearities) are intentionally omitted for TP simplicity.
+\end{itemize}
+
+\section{Conclusion}
+This project delivers a robust and pedagogically effective optical link simulator that bridges course formulas and practical engineering evaluation. The final application supports accurate feasibility assessment under realistic loss and dispersion mechanisms, provides clear visual interpretation, and ensures reproducibility through structured exports. As a TP platform, it combines technical rigor with usability and maintainable software architecture.
+
+\section*{Appendix A: Compilation Instructions}
+\addcontentsline{toc}{section}{Appendix A: Compilation Instructions}
+Compile with:
+\begin{verbatim}
+pdflatex report.tex
+pdflatex report.tex
+\end{verbatim}
+Two passes are recommended to fully resolve references and the table of contents.
+
+\end{document}

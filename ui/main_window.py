@@ -58,6 +58,9 @@ class MainWindow(QWidget):
         self.simulate_btn = QPushButton("Simulate")
         self.simulate_btn.setCursor(Qt.PointingHandCursor)
         self.simulate_btn.clicked.connect(self._simulate)
+        self.import_json_btn = QPushButton("Import JSON")
+        self.import_json_btn.setCursor(Qt.PointingHandCursor)
+        self.import_json_btn.clicked.connect(self._import_json)
         self.save_json_btn = QPushButton("Save JSON")
         self.save_json_btn.setCursor(Qt.PointingHandCursor)
         self.save_json_btn.clicked.connect(self._save_json)
@@ -69,6 +72,7 @@ class MainWindow(QWidget):
         buttons_row = QHBoxLayout()
         buttons_row.setSpacing(10)
         buttons_row.addWidget(self.simulate_btn)
+        buttons_row.addWidget(self.import_json_btn)
         buttons_row.addWidget(self.save_json_btn)
         buttons_row.addWidget(self.save_graph_btn)
         left_panel.addWidget(self.tx_box)
@@ -337,6 +341,63 @@ class MainWindow(QWidget):
             QMessageBox.information(self, "Export Complete", f"Graph saved to:\n{file_path}")
         except Exception as exc:  # pragma: no cover - user-facing safeguard
             QMessageBox.critical(self, "Export Error", f"Could not save graph:\n{exc}")
+
+    def _import_json(self) -> None:
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Import Simulation JSON",
+            "",
+            "JSON Files (*.json)",
+        )
+        if not file_path:
+            return
+        try:
+            with open(file_path, "r", encoding="utf-8") as handle:
+                payload = json.load(handle)
+        except Exception as exc:  # pragma: no cover - user-facing safeguard
+            QMessageBox.critical(self, "Import Error", f"Could not read JSON:\n{exc}")
+            return
+
+        # Support both exported structure {"inputs": {...}} and plain settings JSON.
+        settings = payload.get("inputs", payload) if isinstance(payload, dict) else None
+        if not isinstance(settings, dict):
+            QMessageBox.critical(self, "Import Error", "Invalid JSON format: expected object with settings.")
+            return
+
+        try:
+            self._apply_imported_settings(settings)
+            QMessageBox.information(self, "Import Complete", "Settings loaded successfully.")
+        except Exception as exc:  # pragma: no cover - user-facing safeguard
+            QMessageBox.critical(self, "Import Error", f"Could not apply settings:\n{exc}")
+
+    def _apply_imported_settings(self, settings: dict) -> None:
+        def set_if_present(spinbox: QDoubleSpinBox, key: str) -> None:
+            if key in settings:
+                spinbox.setValue(float(settings[key]))
+
+        if "fiber_type" in settings:
+            fiber_name = str(settings["fiber_type"])
+            index = self.fiber_type.findText(fiber_name)
+            if index >= 0:
+                self.fiber_type.setCurrentIndex(index)
+
+        if "line_code" in settings:
+            code = str(settings["line_code"]).upper()
+            line_index = 1 if code == "RZ" else 0
+            self.line_code.setCurrentIndex(line_index)
+
+        set_if_present(self.wavelength, "wavelength_nm")
+        set_if_present(self.spectral_width, "spectral_width_nm")
+        set_if_present(self.pe, "emitted_power_dbm")
+        set_if_present(self.alpha, "attenuation_db_per_km")
+        set_if_present(self.dc, "chromatic_dispersion_ps_nm_km")
+        set_if_present(self.length, "length_km")
+        set_if_present(self.sensitivity, "receiver_sensitivity_dbm")
+        set_if_present(self.spool_length, "spool_length_km")
+        set_if_present(self.splice_loss, "splice_loss_db")
+        set_if_present(self.connector_loss, "connector_loss_db")
+        set_if_present(self.safety_margin, "safety_margin_db")
+        set_if_present(self.required_bitrate, "required_bitrate_gbps")
 
     def _apply_styles(self) -> None:
         font = QFont("Segoe UI", 10)
