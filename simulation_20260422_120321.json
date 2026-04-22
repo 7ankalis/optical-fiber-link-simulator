@@ -1,0 +1,38 @@
+{
+  "exported_at": "2026-04-22T12:03:24",
+  "inputs": {
+    "wavelength_nm": 1550.0,
+    "spectral_width_nm": 0.1,
+    "emitted_power_dbm": 0.0,
+    "fiber_type": "SMF (Monomode)",
+    "attenuation_db_per_km": 0.2,
+    "chromatic_dispersion_ps_nm_km": 17.0,
+    "length_km": 50.0,
+    "receiver_sensitivity_dbm": -28.0,
+    "spool_length_km": 2.0,
+    "splice_loss_db": 2.0,
+    "connector_loss_db": 0.5,
+    "safety_margin_db": 3.0,
+    "required_bitrate_gbps": 2.5,
+    "line_code": "NRZ",
+    "line_code_coeff": 0.7,
+    "core_index_nc": 1.468,
+    "delta_rel_index": 0.0,
+    "nb_connectors": 2
+  },
+  "results": {
+    "received_power_dbm": -59.0,
+    "computed_margin_db": -31.0,
+    "is_link_functional": false,
+    "verdict_message": "Marge insuffisante (-31.00 < 3.00 dB requis)",
+    "maximum_distance_km": 20.0,
+    "maximum_bit_rate_gbps": 8.235294117647056,
+    "total_dispersion_ps": 85.00000000000001,
+    "chromatic_dispersion_ps": 85.00000000000001,
+    "modal_dispersion_ps": 0.0,
+    "fiber_loss_db": 10.0,
+    "splice_loss_total_db": 48.0,
+    "connector_loss_total_db": 1.0,
+    "number_of_splices": 24
+  }
+}
